@@ -10,7 +10,7 @@ Clone this repository on your local machine by running:
 git clone git@github.com:Bitbol-Lab/Iterative_masking.git
 ```
 and move inside the root folder.
-One can the use directly the functions from the cloned repository or install it with an editable install using:
+One can the use directly the functions from the cloned repository (in the folder `Iterative_masking`) or install it with an editable install running:
 
 ```bash
 pip install -e .
