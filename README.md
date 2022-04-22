@@ -1,5 +1,5 @@
 # Iterative_masking
-> Supporting repository for: "Generative power of a protein language model trained on multiple sequence alignments" (preprint: https://doi.org/10.1101/2022.04.14.488405). We use MSA Transformer (https://doi.org/10.1101/2021.02.12.430858) to generate synthetic protein sequences by masking teratively the same MSA.
+> Supporting repository for: "Generative power of a protein language model trained on multiple sequence alignments" (preprint: https://doi.org/10.1101/2022.04.14.488405). We use MSA Transformer (https://doi.org/10.1101/2021.02.12.430858) to generate synthetic protein sequences by masking iteratively the same MSA.
 
 
 ## Getting started
