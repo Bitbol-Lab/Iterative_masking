@@ -10,12 +10,19 @@ Clone this repository on your local machine by running:
 git clone git@github.com:Bitbol-Lab/Iterative_masking.git
 ```
 and move inside the root folder.
+One can the use directly the functions from the cloned repository or install it with an editable install using:
+
+```bash
+pip install -e .
+```
+
 We recommend creating and activating a dedicated ``conda`` or ``virtualenv`` Python virtual environment.
 
 ## Requirements
 In order to use the functions, the following python packages are required:
 
 - numpy
+- scipy
 - numba
 - fastcore
 - biopython
