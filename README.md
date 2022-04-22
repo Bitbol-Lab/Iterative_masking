@@ -1,10 +1,27 @@
 # Iterative_masking
-> Use MSA Transformer to generate synthetic protein sequences by masking iteratively the same MSA.
+> Supporting repository for: "Generative power of a protein language model trained on
 
 
-## Install
+## Getting started
 
-`pip install Iterative_masking`
+Clone this repository on your local machine by running:
+
+```bash
+git clone git@github.com:Bitbol-Lab/Iterative_masking.git
+```
+and move inside the root folder.
+We recommend creating and activating a dedicated ``conda`` or ``virtualenv`` Python virtual environment.
+
+## Requirements
+In order to run the notebooks, the following python packages are required:
+
+- numpy
+- numba
+- fastcore
+- biopython
+- esm==0.4.0
+- pytorch
+- cuda
 
 ## How to use
 
