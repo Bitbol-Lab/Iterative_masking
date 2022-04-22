@@ -13,7 +13,7 @@ and move inside the root folder.
 We recommend creating and activating a dedicated ``conda`` or ``virtualenv`` Python virtual environment.
 
 ## Requirements
-In order to run the notebooks, the following python packages are required:
+In order to use the functions, the following python packages are required:
 
 - numpy
 - numba
@@ -21,7 +21,8 @@ In order to run the notebooks, the following python packages are required:
 - biopython
 - esm==0.4.0
 - pytorch
-- cuda
+
+It is also required to use a GPU (with cuda).
 
 ## How to use
 
