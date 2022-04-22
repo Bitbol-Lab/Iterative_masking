@@ -8,15 +8,7 @@
 
 ## How to use
 
-Fill me in please! Don't forget code examples:
+`IM_MSA_Transformer`: Class with different functions used to generate new MSAs with the iterative masking procedure
 
-```
-1+1
-```
-
-
-
-
-    2
-
+`gen_MSAs`: example function (with parser) that can be used to generate and save new sequences directly from the terminal.
 
