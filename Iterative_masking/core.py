@@ -27,8 +27,9 @@ class IM_MSA_Transformer:
                  num=None,
                  filepath=None):
 
-        self.iterations = iterations    # number of iterations used to generate the MSA
-        self.p_mask = p_mask            # masking probability for the MSA generation
+        self.iterations = iterations  # number of iterations used to generate the MSA
+        self.p_mask = p_mask  # masking probability for the MSA generation
+        self.num = num
         #---------------------------------------------------------------------------------------
         # Delete lowercase characters and punctuations from a string (input fasta file)
         self.deletekeys = dict.fromkeys(string.ascii_lowercase)
@@ -37,9 +38,12 @@ class IM_MSA_Transformer:
         self.translation = str.maketrans(self.deletekeys)
         #---------------------------------------------------------------------------------------
         if filename is None or num is None or filepath is None:
-            raise ValueError("`filepath`, `filename` and `num` must be specified to import the MSA")
+            raise ValueError(
+                "`filepath`, `filename` and `num` must be specified to import the MSA"
+            )
         # Import Transformer model
-        self.msa_transformer, self.msa_alphabet = esm.pretrained.esm_msa1b_t12_100M_UR50S()
+        self.msa_transformer, self.msa_alphabet = esm.pretrained.esm_msa1b_t12_100M_UR50S(
+        )
         self.msa_transformer = self.msa_transformer.eval().cuda()
         self.msa_batch_converter = self.msa_alphabet.get_batch_converter()
         self.idx_list = self.msa_alphabet.tok_to_idx
@@ -47,15 +51,17 @@ class IM_MSA_Transformer:
 
         # If filename is an array then it's the input MSA
         with torch.no_grad():
-            if isinstance(filename,np.ndarray):
+            if isinstance(filename, np.ndarray):
                 self.msa_data = torch.Tensor(filename).type(torch.int64)
                 if len(filename.shape) != 3:
-                    raise ValueError("`filename` should be an array with 3 axes")
+                    raise ValueError(
+                        "`filename` should be an array with 3 axes")
                 self.msa_batch_tokens = self.msa_data[:, :num[0], :]
                 print('Using MSA given in input')
             else:
                 if len(num) != len(filename):
-                    raise ValueError("`filename` and `num` must have the same length")
+                    raise ValueError(
+                        "`filename` and `num` must have the same length")
                 #---------------------------------------------------------------------------------------
                 # Import MSAs
                 self.msa_data = []
@@ -93,13 +99,15 @@ class IM_MSA_Transformer:
         print(f'Number of sequences in {filename}: ', tot)
         return [
             (record.description, self.remove_insertions(str(record.seq)))
-            for record in itertools.islice(SeqIO.parse(filename, "fasta"), tot)]
+            for record in itertools.islice(SeqIO.parse(filename, "fasta"), tot)
+        ]
 
 #-----------------------------------------------------------------------------------------------------------------------
 #                   USEFUL FUNCTIONS TO RUN THE MSA TRANSFORMER ON INFERENCE MODE
 #-----------------------------------------------------------------------------------------------------------------------
 
-    #-------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------------
+
     def print_tokens(self, tokens=None):
         """
         Outputs (on the cpu) the input `tokens` of the MSA, detaching them from the GPU.
@@ -126,7 +134,8 @@ class IM_MSA_Transformer:
             results = self.msa_transformer(tokens,
                                            repr_layers=lyrs,
                                            return_contacts=False)
-            token_representations = results["representations"][lyrs[0]].detach().cpu().numpy()
+            token_representations = results["representations"][
+                lyrs[0]].detach().cpu().numpy()
             logits = results["logits"].detach().cpu().numpy()
         del results
         return token_representations, logits
@@ -167,7 +176,6 @@ class IM_MSA_Transformer:
             weights[i] = 1 / within_neighbourhood
         return weights
 
-
 #-----------------------------------------------------------------------------------------------------------------------
 #                   USEFUL FUNCTIONS FOR THE MSA GENERATION WITH THE TRANSFORMER ON INFERENCE MODE
 #-----------------------------------------------------------------------------------------------------------------------
@@ -180,10 +188,16 @@ class IM_MSA_Transformer:
         Compute softmax values for each sets of scores in `x` where `x` is the 4-d tensor of logits
         and `T` is the sampling temperature.
         """
-        return torch.exp(x/T) / torch.sum(torch.exp(x/T), axis=axis)[:, :, :, None]
+        return torch.exp(x / T) / torch.sum(torch.exp(x / T),
+                                            axis=axis)[:, :, :, None]
 
     #-------------------------------------------------------------------------------------------------------------------
-    def generate_MSA(self, MSA_tokens, mask_idx=32, use_pdf=False, sample_all=False, T=1):
+    def generate_MSA(self,
+                     MSA_tokens,
+                     mask_idx=32,
+                     use_pdf=False,
+                     sample_all=False,
+                     T=1):
         """
         Generate a new MSA by masking some entries of the original MSA and
         re-predicting them through MSA Transformer.
@@ -236,11 +250,11 @@ class IM_MSA_Transformer:
                                                maxval)
                 del cum, idxs, idxs1, sample
             if sample_all == False:
-                  new_msa_tokens = MSA_tokens * mask + new_msa_tokens * (1 - mask)
+                new_msa_tokens = MSA_tokens * mask + new_msa_tokens * (1 -
+                                                                       mask)
             new_msa_tokens[:, :, 0] = 0
         del mask, masked_msa_tokens, results, msa_logits
         return new_msa_tokens
-
 
     #-------------------------------------------------------------------------------------------------------------------
     def NEW_MSA(self, use_pdf=False, simplified=False, sample_all=False, T=1):
@@ -286,13 +300,15 @@ class IM_MSA_Transformer:
                 new_msa_tokens = self.generate_MSA(
                     MSA_tokens=new_msa_tokens,
                     mask_idx=self.msa_alphabet.mask_idx,
-                    use_pdf=use_pdf, sample_all=sample_all, T=T)
+                    use_pdf=use_pdf,
+                    sample_all=sample_all,
+                    T=T)
                 if np.any((i + 1) == self.iterations):
                     # Save the tokens at the specified iterations
                     if simplified:
-                        all_tokens[j,
-                                   ...] = (new_msa_tokens.clone().detach().cpu()).to(
-                                       dtype=torch.int8)
+                        all_tokens[j, ...] = (
+                            new_msa_tokens.clone().detach().cpu()).to(
+                                dtype=torch.int8)
                     else:
                         all_tokens[j, ...] = new_msa_tokens.clone()
                     j += 1
@@ -302,9 +318,14 @@ class IM_MSA_Transformer:
         else:
             return all_tokens.cuda()
 
-
     #-------------------------------------------------------------------------------------------------------------------
-    def Batch_MSA(self, use_pdf=False, simplified=False, repetitions=2, sample_all=False, T=1, phylo=False):
+    def Batch_MSA(self,
+                  use_pdf=False,
+                  simplified=False,
+                  repetitions=2,
+                  sample_all=False,
+                  T=1,
+                  phylo=False):
         """
         Generate a full MSA by calling with different input MSAs the iterative MSA generator defined
         in: `self.NEW_MSA`.
@@ -337,7 +358,7 @@ class IM_MSA_Transformer:
             if simplified:
                 all_tokens = all_tokens.astype('int8')
             ALL_tokens = self.msa_data
-            depth = self.msa_batch_tokens.shape[1]
+            depth = self.num[0]
             if repetitions * depth > ALL_tokens.shape[1]:
                 all_tokens = np.zeros(
                     (len(self.iterations), self.msa_batch_tokens.shape[0],
@@ -345,11 +366,15 @@ class IM_MSA_Transformer:
                     dtype=np.int64)
 
             if not phylo:
-                ALL_tokens = ALL_tokens[:, torch.randperm(ALL_tokens.shape[1]), :]
+                ALL_tokens = ALL_tokens[:,
+                                        torch.randperm(ALL_tokens.shape[1]), :]
             else:
                 _ = self.Weights_Phylogeny(ALL_tokens[0, :20, :], delta=0.8)
-                phylo_w = self.Weights_Phylogeny(ALL_tokens[0, :, :], delta=0.8)
-                indxs = torch.multinomial(phylo_w, ALL_tokens.shape[1], replacement=True)
+                phylo_w = self.Weights_Phylogeny(ALL_tokens[0, :, :],
+                                                 delta=0.8)
+                indxs = torch.multinomial(phylo_w,
+                                          ALL_tokens.shape[1],
+                                          replacement=True)
                 ALL_tokens = ALL_tokens[:, indxs, :]
             for i in range(repetitions):
                 ind = torch.arange(i * depth, (i + 1) * depth)
@@ -357,8 +382,11 @@ class IM_MSA_Transformer:
                     ind = torch.arange(i * depth, ALL_tokens.shape[1])
                 self.msa_batch_tokens = ALL_tokens[:, ind, :]
                 self.msa_batch_tokens = self.msa_batch_tokens.cuda()
-                all_tokens[:, :,
-                           ind.numpy(), :] = self.NEW_MSA(use_pdf=use_pdf, simplified=simplified, sample_all=sample_all, T=T)
+                all_tokens[:, :, ind.numpy(), :] = self.NEW_MSA(
+                    use_pdf=use_pdf,
+                    simplified=simplified,
+                    sample_all=sample_all,
+                    T=T)
                 if (i + 1) * depth > ALL_tokens.shape[1]:
                     break
 
@@ -369,10 +397,15 @@ class IM_MSA_Transformer:
             return ALL_tokens[:, :repetitions *
                               depth, :], torch.from_numpy(all_tokens).cuda()
 
-
     #-------------------------------------------------------------------------------------------------------------------
 
-    def generate_MSA_context(self, ancestor, context, mask_idx=32, use_pdf=False, sample_all=False, T=1):
+    def generate_MSA_context(self,
+                             ancestor,
+                             context,
+                             mask_idx=32,
+                             use_pdf=False,
+                             sample_all=False,
+                             T=1):
         """
         Generate a new sequence by masking some entries of the original ancestor sequence and
         re-predicting them through the transformer model (mask only `ancestor`, not the `context`).
@@ -401,29 +434,31 @@ class IM_MSA_Transformer:
             if not context.is_cuda:
                 context = context.cuda()
 
-            mask = ((torch.rand(ancestor.shape) > self.p_mask).type(torch.uint8)).cuda()
+            mask = ((torch.rand(ancestor.shape) > self.p_mask).type(
+                torch.uint8)).cuda()
             masked_ancestor = ancestor * mask + mask_idx * (1 - mask)
 
-            masked_msa_tokens = torch.zeros((context.shape[0],
-                                             context.shape[1]+1,
-                                             context.shape[2]),
-                                             dtype=torch.int64).cuda()
+            masked_msa_tokens = torch.zeros(
+                (context.shape[0], context.shape[1] + 1, context.shape[2]),
+                dtype=torch.int64).cuda()
             masked_msa_tokens[0, 0, :] = masked_ancestor
             masked_msa_tokens[:, 1:, :] = context
 
             results = self.msa_transformer(masked_msa_tokens,
                                            repr_layers=[12],
                                            return_contacts=False)
-            results1 = results["logits"][:,0,:,:]
-            results1 = results1[:,None,:,:]
+            results1 = results["logits"][:, 0, :, :]
+            results1 = results1[:, None, :, :]
             msa_logits = self.softmax_tensor(x=results1, axis=3, T=T)
 
             if use_pdf == False:
-                new_generation = torch.argmax(msa_logits, dim=3)[0,0,:]
+                new_generation = torch.argmax(msa_logits, dim=3)[0, 0, :]
             else:
                 Vals = torch.tensor([
                     4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                    20, 21, 22, 23, 30],dtype=torch.int64)
+                    20, 21, 22, 23, 30
+                ],
+                                    dtype=torch.int64)
                 maxval = Vals[-1].cuda()
                 msa_logits = msa_logits[:, :, :, Vals]
                 msa_logits = msa_logits / (torch.sum(msa_logits,
@@ -436,11 +471,11 @@ class IM_MSA_Transformer:
                     (cum.shape[0], cum.shape[1], cum.shape[2]))).cuda()
                 idxs[torch.gt(sample[:, :, :, None], cum)] = 100
                 new_generation = torch.minimum(torch.amin(idxs, axis=3),
-                                               maxval)[0,0,:]
+                                               maxval)[0, 0, :]
                 del cum, idxs, idxs1, sample
 
             if sample_all == False:
-                  new_generation = ancestor * mask + new_generation * (1 - mask)
+                new_generation = ancestor * mask + new_generation * (1 - mask)
             new_generation[0] = 0
 
         del mask, masked_msa_tokens, results, results1, msa_logits
@@ -449,7 +484,15 @@ class IM_MSA_Transformer:
     #-------------------------------------------------------------------------------------------------------------------
     # Generate new sequence in a Linear tree by reiterating the function `generate_MSA_context()` starting from the sequence:
     # `ancestor` (original sequence) and using the sequences in `context` as context MSA.
-    def Context_MSA(self, depth=None, ancestor=None, context=None, use_pdf=False, simplified=False, sample_all=False, print_all=True, T=1):
+    def Context_MSA(self,
+                    depth=None,
+                    ancestor=None,
+                    context=None,
+                    use_pdf=False,
+                    simplified=False,
+                    sample_all=False,
+                    print_all=True,
+                    T=1):
         """
         Generates a new MSA with context-generation by iterating the masking on the original ancestor sequence
         using: `self.generate_MSA_context`. It masks `ancestor` (original sequence) and uses the sequences in `context` as context MSA.
@@ -477,31 +520,34 @@ class IM_MSA_Transformer:
         `depth`:        number of generated sequences, if None the depth is the number of ancestor sequences.
         """
         with torch.no_grad():
-            total_ran=False
+            total_ran = False
             if ancestor is None and context is None and depth is not None:
                 ALL_tokens = self.msa_data
-                ALL_tokens = ALL_tokens[:, torch.randperm(ALL_tokens.shape[1]), :]
-                ancestor = ALL_tokens[0,:depth,:]
-                ALL_tokens = ALL_tokens[:, torch.randperm(ALL_tokens.shape[1]), :]
-                context  = ALL_tokens[:,:self.msa_batch_tokens.shape[1],:]
+                ALL_tokens = ALL_tokens[:,
+                                        torch.randperm(ALL_tokens.shape[1]), :]
+                ancestor = ALL_tokens[0, :depth, :]
+                ALL_tokens = ALL_tokens[:,
+                                        torch.randperm(ALL_tokens.shape[1]), :]
+                context = ALL_tokens[:, :self.msa_batch_tokens.shape[1], :]
             elif depth is None:
                 depth = ancestor.shape[0]
-                if isinstance(context,np.ndarray):
-                    total_ran=False
-                elif context=='tot-ran':
-                    total_ran=True
+                if isinstance(context, np.ndarray):
+                    total_ran = False
+                elif context == 'tot-ran':
+                    total_ran = True
             else:
-                print('ERROR, either you give depth or you give ancestor and context')
+                print(
+                    'ERROR, either you give depth or you give ancestor and context'
+                )
 
-            all_tokens = torch.zeros((self.msa_batch_tokens.shape[0],
-                 self.iterations[-1]+1,
-                 depth,
-                 ancestor.shape[1]),
+            all_tokens = torch.zeros(
+                (self.msa_batch_tokens.shape[0], self.iterations[-1] + 1,
+                 depth, ancestor.shape[1]),
                 dtype=torch.int64).cuda()
 
             ancestor = torch.from_numpy(ancestor).to(dtype=torch.int64)
             if not total_ran:
-                context  = torch.from_numpy(context).to(dtype=torch.int64)
+                context = torch.from_numpy(context).to(dtype=torch.int64)
             if total_ran:
                 ALL_tokens = self.msa_data
 
@@ -517,10 +563,20 @@ class IM_MSA_Transformer:
             # Iterate the MSA generation tree
             for j in range(depth):
                 new_ancestor = all_tokens[0, 0, j, :]
-                for i in range(1,self.iterations[-1]+1):
+                for i in range(1, self.iterations[-1] + 1):
                     if total_ran:
-                        context = (ALL_tokens[:, torch.randperm(ALL_tokens.shape[1])[:self.msa_batch_tokens.shape[1]], :]).cuda()
-                    new_ancestor = self.generate_MSA_context(ancestor=new_ancestor,context=context, mask_idx=self.msa_alphabet.mask_idx, use_pdf=use_pdf, sample_all=sample_all, T=T)
+                        context = (
+                            ALL_tokens[:,
+                                       torch.randperm(ALL_tokens.shape[1]
+                                                      )[:self.msa_batch_tokens.
+                                                        shape[1]], :]).cuda()
+                    new_ancestor = self.generate_MSA_context(
+                        ancestor=new_ancestor,
+                        context=context,
+                        mask_idx=self.msa_alphabet.mask_idx,
+                        use_pdf=use_pdf,
+                        sample_all=sample_all,
+                        T=T)
                     if print_all:
                         all_tokens[0, i, j, :] = new_ancestor
                 if not print_all:
@@ -528,10 +584,12 @@ class IM_MSA_Transformer:
                 # torch.cuda.empty_cache()
 
         if not print_all:
-            all_tokens = all_tokens[:,torch.tensor([-1]),:,:]
+            all_tokens = all_tokens[:, torch.tensor([-1]), :, :]
 
         if simplified:
-            return ((context.detach().cpu()).to(dtype=torch.int8)).numpy(), ((all_tokens.detach().cpu()).to(dtype=torch.int8)).numpy()
+            return ((context.detach().cpu()).to(
+                dtype=torch.int8)).numpy(), ((all_tokens.detach().cpu()).to(
+                    dtype=torch.int8)).numpy()
         else:
             return context.cuda(), all_tokens.cuda()
 
@@ -541,22 +599,65 @@ import os
 import pickle
 from fastcore.script import *
 
+
 @call_parse
-def gen_MSAs(filepath:Param(help='Path of the input directory',type=str,default='./'),
-         filename:Param(help='Name of the input file(s)',type=str,nargs='+',default=False),
-         new_dir:Param(help='Name of the output directory',type=str,default=False),
-         pdf:Param(help='Should I sample tokens from the pdf ? (bool)',type=bool_arg,default=False),
-         T:Param(help='Which is the sampling Temperature from the pdf ? (only when `pdf` is True)',type=float,default=1),
-         sample_all:Param(help='Should I sample all tokens or just the masked ones ? (True = sample all tokens)',type=bool_arg, default=False),
-         Iters:Param(help='Number of total iterations to generate the new tokens',type=int,default=10),
-         pmask:Param(help='Masking probability',type=float,default=0.1),
-         num:Param(help='Size of the batches MSAs which the MSA-Transformer receives as input',type=int,nargs='+',default=100),
-         depth:Param(help='Number of batches (of size num) that you want to generate',type=int,default=2),
-         generate:Param(help='How should I generate sequences ? False (=Batch generation) or Linear with context (=linear-ran/linear-tot-ran), `-ran` means that the context MSA is sampled randomly (once) while `-tot-ran` means that it is sampled randomly each time.',type=str, default=False),
-         print_all:Param(help='Should I print the MSA after each iteration ? (bool)',type=bool_arg,default=False),
-         range_vals:Param(help='First and last index of the sequences that you want to use as ancestors', type=int,nargs='+',default=False),
-         phylo_w:Param(help='Should I sample the starting sequences from the phylogeny weights ? (bool)',type=bool_arg,default=False)
-         ):
+def gen_MSAs(filepath: Param(
+    help='Path of the input directory', type=str, default='./'
+), filename: Param(
+    help='Name of the input file(s)', type=str, nargs='+', default=False
+), new_dir: Param(
+    help='Name of the output directory', type=str, default=False
+), pdf: Param(
+    help='Should I sample tokens from the pdf ? (bool)',
+    type=bool_arg,
+    default=False
+), T: Param(
+    help=
+    'Which is the sampling Temperature from the pdf ? (only when `pdf` is True)',
+    type=float,
+    default=1
+), sample_all: Param(
+    help=
+    'Should I sample all tokens or just the masked ones ? (True = sample all tokens)',
+    type=bool_arg,
+    default=False
+), Iters: Param(
+    help='Number of total iterations to generate the new tokens',
+    type=int,
+    default=10
+), pmask: Param(
+    help='Masking probability',
+    type=float,
+    default=0.1
+), num: Param(
+    help='Size of the batches MSAs which the MSA-Transformer receives as input',
+    type=int,
+    nargs='+',
+    default=100
+), depth: Param(
+    help='Number of batches (of size num) that you want to generate',
+    type=int,
+    default=2
+), generate: Param(
+    help=
+    'How should I generate sequences ? False (=Batch generation) or Linear with context (=linear-ran/linear-tot-ran), `-ran` means that the context MSA is sampled randomly (once) while `-tot-ran` means that it is sampled randomly each time.',
+    type=str,
+    default=False
+), print_all: Param(
+    help='Should I print the MSA after each iteration ? (bool)',
+    type=bool_arg,
+    default=False
+), range_vals: Param(
+    help=
+    'First and last index of the sequences that you want to use as ancestors',
+    type=int,
+    nargs='+',
+    default=False
+), phylo_w: Param(
+    help=
+    'Should I sample the starting sequences from the phylogeny weights ? (bool)',
+    type=bool_arg,
+    default=False)):
     "Generate a new MSA either with Batch generation of Context generation. It shuffles the initial MSA and uses different slices as batch MSAs"
 
     # Create folder
@@ -573,9 +674,7 @@ def gen_MSAs(filepath:Param(help='Path of the input directory',type=str,default=
 
     # Save Input MSA
     print('Tokenize')
-    Class = IM_MSA_Transformer(filename=filename,
-                               num=[-1],
-                               filepath=filepath)
+    Class = IM_MSA_Transformer(filename=filename, num=[-1], filepath=filepath)
     idx_list = Class.idx_list
     old_tkn = Class.print_tokens()
     a_file = open(path1 + "/dictionary-tokens.pkl", "wb")
@@ -584,17 +683,19 @@ def gen_MSAs(filepath:Param(help='Path of the input directory',type=str,default=
     np.save(path1 + "/original-tokens.npy", old_tkn[0])
 
     add_strs = ""
-    if pdf==True:
+    if pdf == True:
         add_strs += f"_pdf(T={round(T,3)})"
         print(
             "We are sampling new tokens from the pdf of logits and not taking the mode of the pdf"
         )
-    if T!=1 and pdf==False:
-        print('To sample with a Temperature you should use pdf=True, otherwise the result is the same')
+    if T != 1 and pdf == False:
+        print(
+            'To sample with a Temperature you should use pdf=True, otherwise the result is the same'
+        )
     if sample_all == False:
         add_strs += "_(only-masked-sampled)"
-    if not generate==False:
-        add_strs += "_"+generate+"_(context-"+str(num[0])+")"
+    if not generate == False:
+        add_strs += "_" + generate + "_(context-" + str(num[0]) + ")"
     if phylo_w:
         add_strs += "_phylo-w"
 
@@ -612,11 +713,14 @@ def gen_MSAs(filepath:Param(help='Path of the input directory',type=str,default=
     if generate == False:
         print('Generating MSA with same size as the original one')
         old_T, new_T = Class.Batch_MSA(simplified=True,
-                                    repetitions=depth,
-                                    use_pdf=pdf, sample_all=sample_all, T=T, phylo=phylo_w)
+                                       repetitions=depth,
+                                       use_pdf=pdf,
+                                       sample_all=sample_all,
+                                       T=T,
+                                       phylo=phylo_w)
         NNN = min(num[0] * depth, old_T.shape[1])
 
-    elif generate=='linear-ran' or generate=='linear-tot-ran':
+    elif generate == 'linear-ran' or generate == 'linear-tot-ran':
         print('Generate MSA with linear context generation')
         orig_tkn = np.load(path + "/" + path1 + "/original-tokens.npy")
         # select ancestor and context
@@ -629,42 +733,50 @@ def gen_MSAs(filepath:Param(help='Path of the input directory',type=str,default=
         elif range_vals is False:
             ind_ancestor = indices[:depth]
         else:
-            if range_vals[1] == -1 :
+            if range_vals[1] == -1:
                 ind_ancestor = indices[range_vals[0]:]
                 range_vals[1] = orig_tkn.shape[0]
             else:
                 ind_ancestor = indices[range_vals[0]:range_vals[1]]
-        ancestor = orig_tkn[ind_ancestor,:]
-        context  = orig_tkn[indexes_context,:][None,:,:]
-        if generate=='linear-tot-ran':
+        ancestor = orig_tkn[ind_ancestor, :]
+        context = orig_tkn[indexes_context, :][None, :, :]
+        if generate == 'linear-tot-ran':
             context = 'tot-ran'
-        old_T, new_T = Class.Context_MSA(None, ancestor, context, use_pdf=pdf, simplified=True, sample_all=sample_all, print_all=print_all, T=T)
-        if generate=='linear-tot-ran':
-            old_T = ancestor[None,:,:]
+        old_T, new_T = Class.Context_MSA(None,
+                                         ancestor,
+                                         context,
+                                         use_pdf=pdf,
+                                         simplified=True,
+                                         sample_all=sample_all,
+                                         print_all=print_all,
+                                         T=T)
+        if generate == 'linear-tot-ran':
+            old_T = ancestor[None, :, :]
         NNN = new_T.shape[2]
     else:
         print('ERROR: Select a generative process')
 
     # define the name of the directory to be created and create it
-    path2 = "Generated" + "_iter-" + str(
-        Iters) + "_pmask-" + str(pmask) + "_seqs-" + str(NNN) + add_strs
+    path2 = "Generated" + "_iter-" + str(Iters) + "_pmask-" + str(
+        pmask) + "_seqs-" + str(NNN) + add_strs
     try:
         os.mkdir(path + "/" + path1 + "/" + path2)
     except OSError:
-        print("Creation of the directory %s failed" % (path + "/" +
-              path1 + "/" + path2))
+        print("Creation of the directory %s failed" %
+              (path + "/" + path1 + "/" + path2))
     else:
-        print("Successfully created the directory %s " % (path + "/" +
-              path1 + "/" + path2))
+        print("Successfully created the directory %s " %
+              (path + "/" + path1 + "/" + path2))
 
     # Save data
-    if generate == False or generate=='linear-tot-ran':
+    if generate == False or generate == 'linear-tot-ran':
         np.save(path1 + "/" + path2 + "/shuffled-tokens.npy", old_T[0])
     else:
         np.save(path1 + "/" + path2 + "/context-tokens.npy", old_T[0])
     str_add = ''
     if range_vals is not False:
-        str_add = '_range_indx_'+str(range_vals[0])+','+str(range_vals[1])
-    np.save(path1 + "/" + path2 + "/new-tokens"+str_add+".npy", new_T[0])
+        str_add = '_range_indx_' + str(range_vals[0]) + ',' + str(
+            range_vals[1])
+    np.save(path1 + "/" + path2 + "/new-tokens" + str_add + ".npy", new_T[0])
 
     return 1
