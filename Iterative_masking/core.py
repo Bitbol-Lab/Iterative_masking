@@ -181,6 +181,7 @@ class IM_MSA_Transformer:
         and `T` is the sampling temperature.
         """
         return torch.exp(x/T) / torch.sum(torch.exp(x/T), axis=axis)[:, :, :, None]
+    
 
     #-------------------------------------------------------------------------------------------------------------------
     def generate_MSA(self, MSA_tokens, mask_idx=32, use_pdf=False, sample_all=False, T=1):
