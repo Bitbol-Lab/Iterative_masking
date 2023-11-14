@@ -28,6 +28,7 @@ if torch.cuda.is_available():
 else:
     DEVICE = "cpu"
 DEVICE = torch.device(DEVICE)
+print(DEVICE)
 
 # Iterative masking MSA-Transformer
 class IM_MSA_Transformer:
