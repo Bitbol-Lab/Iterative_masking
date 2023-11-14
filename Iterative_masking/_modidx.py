@@ -35,4 +35,6 @@ d = { 'settings': { 'branch': 'main',
                                                                                                          'Iterative_masking/core.py'),
                                         'Iterative_masking.core.IM_MSA_Transformer.softmax_tensor': ( 'core.html#im_msa_transformer.softmax_tensor',
                                                                                                       'Iterative_masking/core.py'),
+                                        'Iterative_masking.core.IM_MSA_Transformer.tokenize_msa': ( 'core.html#im_msa_transformer.tokenize_msa',
+                                                                                                    'Iterative_masking/core.py'),
                                         'Iterative_masking.core.gen_MSAs': ('core.html#gen_msas', 'Iterative_masking/core.py')}}}

@@ -45,37 +45,11 @@ class IM_MSA_Transformer:
         self.idx_list = self.msa_alphabet.tok_to_idx
         print('MSA Transformer model imported')
 
-        # If filename is an array then it's the input MSA
-        with torch.no_grad():
-            if isinstance(filename,np.ndarray):
-                self.msa_data = torch.Tensor(filename).type(torch.int64)
-                if len(filename.shape) != 3:
-                    raise ValueError("`filename` should be an array with 3 axes")
-                self.msa_batch_tokens = self.msa_data[:, :num[0], :]
-                print('Using MSA given in input')
-            else:
-                if len(num) != len(filename):
-                    raise ValueError("`filename` and `num` must have the same length")
-                #---------------------------------------------------------------------------------------
-                # Import MSAs
-                self.msa_data = []
-                for ff, nn in zip(filename, num):
-                    self.msa_data += [self.read_msa(filepath + '/' + ff, nn)]
-                print('MSA Imported')
-                #---------------------------------------------------------------------------------------
-                # Create tokens starting from MSA
-                self.msa_batch_labels, self.msa_batch_strs, self.msa_batch_tokens = self.msa_batch_converter(
-                    self.msa_data)
-                self.msa_data = (self.msa_batch_tokens).clone()
-                print(f'We are using batch MSAs of {num[0]} sequences')
-                self.msa_batch_tokens = self.msa_batch_tokens[:, :num[0], :]
-
-            # Import tokens into cuda
-            self.msa_batch_tokens = self.msa_batch_tokens.cuda()
-
-            print('MSA converted into tokens tensor of size and type:')
-            print(self.msa_batch_tokens.size(), self.msa_batch_tokens.dtype)
-
+        # Import MSA and convert it into tokens
+        self.msa_data, self.msa_batch_tokens = self.tokenize_msa(filename, num, filepath)
+        # Import tokens into cuda
+        self.msa_batch_tokens = self.msa_batch_tokens.cuda()
+    
     #---------------------------------------------------------------------------------------
     # Useful functions for handling string sequences
     def read_sequence(self, filename: str) -> Tuple[str, str]:
@@ -99,6 +73,40 @@ class IM_MSA_Transformer:
 #                   USEFUL FUNCTIONS TO RUN THE MSA TRANSFORMER ON INFERENCE MODE
 #-----------------------------------------------------------------------------------------------------------------------
 
+    def tokenize_msa(self, filename, num, filepath):
+        # If filename is an array then it's the input MSA
+        with torch.no_grad():
+            if isinstance(filename,np.ndarray):
+                msa_data = torch.Tensor(filename).type(torch.int64)
+                if len(filename.shape) != 3:
+                    raise ValueError("`filename` should be an array with 3 axes")
+                if num[0]==-1:
+                    num[0]=msa_data.shape[1]
+                msa_batch_tokens = msa_data[:, :num[0], :]
+                print('Using MSA given in input')
+            else:
+                if len(num) != len(filename):
+                    raise ValueError("`filename` and `num` must have the same length")
+                #---------------------------------------------------------------------------------------
+                # Import MSAs
+                msa_data = []
+                for ff, nn in zip(filename, num):
+                    msa_data += [self.read_msa(filepath + '/' + ff, nn)]
+                print('MSA Imported')
+                #---------------------------------------------------------------------------------------
+                # Create tokens starting from MSA
+                msa_batch_labels, msa_batch_strs, msa_batch_tokens = self.msa_batch_converter(
+                    msa_data)
+                msa_data = (msa_batch_tokens).clone()
+                if num[0]==-1:
+                    num[0]=msa_batch_tokens.shape[1]
+                print(f'We are using batch MSAs of {num[0]} sequences')
+                msa_batch_tokens = msa_batch_tokens[:, :num[0], :]
+
+            print('MSA converted into tokens tensor of size and type:')
+            print(msa_batch_tokens.size(), msa_batch_tokens.dtype)
+            return msa_data, msa_batch_tokens
+        
     #-------------------------------------------------------------------------------------------------------------------
     def print_tokens(self, tokens=None):
         """
@@ -180,7 +188,8 @@ class IM_MSA_Transformer:
         Compute softmax values for each sets of scores in `x` where `x` is the 4-d tensor of logits
         and `T` is the sampling temperature.
         """
-        return torch.exp(x/T) / torch.sum(torch.exp(x/T), axis=axis)[:, :, :, None]
+        # return torch.exp(x/T) / torch.sum(torch.exp(x/T), axis=axis)[:, :, :, None]
+        return torch.softmax(x/T, dim=axis)
     
 
     #-------------------------------------------------------------------------------------------------------------------
