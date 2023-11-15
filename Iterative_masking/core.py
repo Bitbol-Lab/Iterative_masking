@@ -63,7 +63,7 @@ class IM_MSA_Transformer:
         print('MSA Transformer model imported')
 
         # Import MSA and convert it into tokens
-        self.msa_data, self.msa_batch_tokens = self.tokenize_msa(filename, num, filepath)
+        self.msa_batch_labels, self.msa_batch_strs, self.msa_data, self.msa_batch_tokens = self.tokenize_msa(filename, num, filepath)
         # Import tokens into cuda
         self.msa_batch_tokens = self.msa_batch_tokens.to(DEVICE)
     
@@ -122,7 +122,7 @@ class IM_MSA_Transformer:
 
             print('MSA converted into tokens tensor of size and type:')
             print(msa_batch_tokens.size(), msa_batch_tokens.dtype)
-            return msa_data, msa_batch_tokens
+            return msa_batch_labels, msa_batch_strs, msa_data, msa_batch_tokens
         
     #-------------------------------------------------------------------------------------------------------------------
     def print_tokens(self, tokens=None):
