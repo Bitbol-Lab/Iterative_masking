@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['DEVICE', 'DC', 'IM_MSA_Transformer', 'gen_MSAs']
 
-# %% ../00_core.ipynb 3
+# %% ../00_core.ipynb 2
 import numpy as np
 import esm
 from numba import njit, prange
@@ -20,11 +20,13 @@ if torch.cuda.is_available():
     if torch.cuda.device_count() == 1:
         DEVICE = "cuda"
     else:
-        device_no = input("Choose CUDA device number: ")
-        if device_no == "":
-            DEVICE = "cpu"
-        else:
+        device_no = "0"
+        try:
+            device_no = input("Choose CUDA device number: ")
             DEVICE = f"cuda:{device_no}"
+        except EOFError as e:
+            warn("No device number selected, using CPU")
+            DEVICE = "cpu"
 else:
     DEVICE = "cpu"
 DEVICE = torch.device(DEVICE)
@@ -483,13 +485,6 @@ class IM_MSA_Transformer:
         `phylo`:            if True the start sequences are sampled from phylogeny weights instead of randomly.
         """
         with torch.no_grad():
-            all_tokens = np.zeros(
-                (len(self.iterations), self.msa_batch_tokens.shape[0],
-                 self.msa_batch_tokens.shape[1] * repetitions,
-                 self.msa_batch_tokens.shape[2]),
-                dtype=np.int64)
-            if simplified:
-                all_tokens = all_tokens.astype('int8')
             ALL_tokens = self.msa_data
             depth = self.msa_batch_tokens.shape[1]
             if repetitions * depth > ALL_tokens.shape[1]:
@@ -497,6 +492,14 @@ class IM_MSA_Transformer:
                     (len(self.iterations), self.msa_batch_tokens.shape[0],
                      ALL_tokens.shape[1], self.msa_batch_tokens.shape[2]),
                     dtype=np.int64)
+            else:
+                all_tokens = np.zeros(
+                    (len(self.iterations), self.msa_batch_tokens.shape[0],
+                    self.msa_batch_tokens.shape[1] * repetitions,
+                    self.msa_batch_tokens.shape[2]),
+                    dtype=np.int64)
+            if simplified:
+                all_tokens = all_tokens.astype('int8')
 
             if not phylo:
                 ALL_tokens = ALL_tokens[:, torch.randperm(ALL_tokens.shape[1]), :]
@@ -612,7 +615,7 @@ class IM_MSA_Transformer:
         else:
             return context.to(DEVICE), all_tokens.to(DEVICE)
 
-# %% ../00_core.ipynb 7
+# %% ../00_core.ipynb 6
 import os
 import pickle
 from fastcore.script import *
