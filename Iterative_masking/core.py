@@ -309,13 +309,13 @@ class IM_MSA_Transformer:
                                              context.shape[1]+ancestor.shape[1],
                                              context.shape[2]),
                                              dtype=torch.int64).to(DEVICE)
-            masked_msa_tokens[0, :ancestor.shape[1], :] = masked_ancestor
-            masked_msa_tokens[:, ancestor.shape[1]:, :] = context
+            masked_msa_tokens[0, :context.shape[1], :] = context
+            masked_msa_tokens[:, context.shape[1]:, :] = masked_ancestor
 
             results = self.msa_transformer(masked_msa_tokens,
                                            repr_layers=[12],
                                            return_contacts=False)
-            results1 = results["logits"][:,:ancestor.shape[1],:,:]
+            results1 = results["logits"][:,context.shape[1]:,:,:]
             msa_logits = self.softmax_tensor(x=results1, axis=3, T=T)
 
             if use_pdf == False:
