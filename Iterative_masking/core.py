@@ -351,7 +351,7 @@ class IM_MSA_Transformer:
         Iterate the MSA generation process `iters` times starting from `msa_tokens` using the function `generate_MSA`.
         If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves only the last one.
         """
-        lst_msa_tokens = []
+        lst_msa_tokens = [DC(msa_tokens)]
         for i in range(iters):
             msa_tokens = self.generate_MSA(
                                     MSA_tokens=msa_tokens,
@@ -376,7 +376,7 @@ class IM_MSA_Transformer:
         else:
             context = all_context
             
-        lst_ancestors = []
+        lst_ancestors = [DC(ancestor)]
         for i in range(iters):
             if use_rnd_ctx:
                 inds = torch.randperm(full_context_msa.shape[1])[:num]
