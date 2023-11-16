@@ -13,6 +13,7 @@ import itertools
 from typing import List, Tuple
 import string
 from warnings import warn
+from tqdm import tqdm
 
 torch.set_grad_enabled(False)
 
@@ -212,7 +213,7 @@ class IM_MSA_Transformer:
     
 
     #-------------------------------------------------------------------------------------------------------------------
-    def generate_MSA(self, MSA_tokens, mask_idx=32, use_pdf=False, sample_all=False, T=1):
+    def generate_MSA(self, MSA_tokens, mask_idx=32, use_pdf=False, sample_all=False, T=1, rand_perm=False):
         """
         Generate a new MSA by masking some entries of the original MSA and
         re-predicting them through MSA Transformer.
@@ -231,6 +232,8 @@ class IM_MSA_Transformer:
                     are left untouched and only the masked ones are changed.
 
         `T`:          Temperature of sampling from the pdf of output logits.
+        
+        `rand_perm`:    if True it randomly permutes the MSA sequences and change it back after the generation.
         """
         with torch.no_grad():
             if not MSA_tokens.is_cuda:
@@ -238,10 +241,17 @@ class IM_MSA_Transformer:
             mask = ((torch.rand(MSA_tokens.shape) > self.p_mask).type(
                 torch.uint8)).to(DEVICE)
             masked_msa_tokens = MSA_tokens * mask + mask_idx * (1 - mask)
+            if rand_perm:
+                inds = torch.randperm(masked_msa_tokens.shape[1])
+                masked_msa_tokens = masked_msa_tokens[:, inds, :]
             results = self.msa_transformer(masked_msa_tokens,
                                            repr_layers=[12],
                                            return_contacts=False)
-            msa_logits = self.softmax_tensor(x=results["logits"], axis=3, T=T)
+            results1 = results["logits"]
+            if rand_perm:
+                inds_backward = torch.argsort(inds)
+                results1 = results1[:,inds_backward,:,:]
+            msa_logits = self.softmax_tensor(x=results1, axis=3, T=T)
             if use_pdf == False:
                 new_msa_tokens = torch.argmax(msa_logits, dim=3)
             else:
@@ -267,13 +277,13 @@ class IM_MSA_Transformer:
             if sample_all == False:
                   new_msa_tokens = MSA_tokens * mask + new_msa_tokens * (1 - mask)
             new_msa_tokens[:, :, 0] = 0
-        del mask, masked_msa_tokens, results, msa_logits
+        del mask, masked_msa_tokens, results, msa_logits, results1
         return new_msa_tokens
 
 
     #-------------------------------------------------------------------------------------------------------------------
 
-    def generate_MSA_context(self, ancestor, context, mask_idx=32, use_pdf=False, sample_all=False, T=1):
+    def generate_MSA_context(self, ancestor, context, mask_idx=32, use_pdf=False, sample_all=False, T=1, rand_perm=False):
         """
         Generate a sequences by masking some entries of the original ancestor sequences and
         re-predicting them through the transformer model (mask only `ancestor`, not the `context`).
@@ -294,6 +304,8 @@ class IM_MSA_Transformer:
                         are left untouched and only the masked ones are changed.
 
         `T`:            Temperature of sampling from the pdf of output logits.
+        
+        `rand_perm`:    if True it randomly permutes the MSA sequences and change it back after the generation.
         """
         with torch.no_grad():
 
@@ -309,13 +321,19 @@ class IM_MSA_Transformer:
                                              context.shape[1]+ancestor.shape[1],
                                              context.shape[2]),
                                              dtype=torch.int64).to(DEVICE)
-            masked_msa_tokens[0, :context.shape[1], :] = context
+            masked_msa_tokens[:, :context.shape[1], :] = context
             masked_msa_tokens[:, context.shape[1]:, :] = masked_ancestor
-
+            if rand_perm:
+                inds = torch.randperm(masked_msa_tokens.shape[1])
+                masked_msa_tokens = masked_msa_tokens[:, inds, :]
             results = self.msa_transformer(masked_msa_tokens,
                                            repr_layers=[12],
                                            return_contacts=False)
-            results1 = results["logits"][:,context.shape[1]:,:,:]
+            results1 = results["logits"]
+            if rand_perm:
+                inds_backward = torch.argsort(inds)
+                results1 = results1[:,inds_backward,:,:]
+            results1 = results1[:,context.shape[1]:,:,:]
             msa_logits = self.softmax_tensor(x=results1, axis=3, T=T)
 
             if use_pdf == False:
@@ -346,26 +364,27 @@ class IM_MSA_Transformer:
         del mask, masked_msa_tokens, results, results1, msa_logits
         return new_generation
     
-    def generate_all_msa(self, msa_tokens, iters, use_pdf=False, T=1, save_all=False):
+    def generate_all_msa(self, msa_tokens, iters, use_pdf=False, T=1, save_all=False, rand_perm=False):
         """
         Iterate the MSA generation process `iters` times starting from `msa_tokens` using the function `generate_MSA`.
         If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves only the last one.
         """
         lst_msa_tokens = [DC(msa_tokens)]
-        for i in range(iters):
+        for i in tqdm(range(iters)):
             msa_tokens = self.generate_MSA(
                                     MSA_tokens=msa_tokens,
                                     mask_idx=self.msa_alphabet.mask_idx,
                                     use_pdf=use_pdf,
                                     sample_all=False,
-                                    T=T)
+                                    T=T,
+                                    rand_perm=rand_perm)
             if save_all:
                 lst_msa_tokens.append(DC(msa_tokens))
         if save_all:
             return torch.stack(lst_msa_tokens, dim=0)
         return msa_tokens
 
-    def generate_with_context_msa(self, ancestor, iters, use_pdf=False, T=1, all_context=(None,100), use_rnd_ctx=False, save_all=False):
+    def generate_with_context_msa(self, ancestor, iters, use_pdf=False, T=1, all_context=(None,100), use_rnd_ctx=False, save_all=False, rand_perm=False):
         """
         Iterate the MSA generation process `iters` times starting from `ancestor` and using the context from `all_context`, it uses
         the function `generate_MSA_context`. If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves only the last one.
@@ -377,7 +396,7 @@ class IM_MSA_Transformer:
             context = all_context
             
         lst_ancestors = [DC(ancestor)]
-        for i in range(iters):
+        for i in tqdm(range(iters)):
             if use_rnd_ctx:
                 inds = torch.randperm(full_context_msa.shape[1])[:num]
                 context = full_context_msa[:, inds, :]
@@ -387,7 +406,8 @@ class IM_MSA_Transformer:
                             mask_idx=self.msa_alphabet.mask_idx,
                             use_pdf=use_pdf,
                             sample_all=False,
-                            T=T)
+                            T=T,
+                            rand_perm=rand_perm)
             if save_all:
                 lst_ancestors.append(DC(ancestor))
         if save_all:

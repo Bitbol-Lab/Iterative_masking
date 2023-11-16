@@ -67,7 +67,7 @@ gen_MSAs(filepath="examples",
 filename = "PF00072.fasta"
 filepath = "examples"
 pmask = 0.1
-iterations = 200
+iterations = 20
 
 print('Tokenize')
 IM_class = IM_MSA_Transformer(p_mask=pmask, filename=[filename], num=[-1], filepath=filepath)
@@ -77,34 +77,63 @@ tokenized_msa = IM_class.msa_batch_tokens
 
 ### Generate full MSA (mask all sequences and iterate)
 
+- If `use_pdf`=True, generate tokens by sampling from the logits at
+  temperature `T`.
+- If `save_all`=True, then the first dimension of generated_tokens is
+  the number of iterations.
+- If `rand_perm`=True, then the sequence order is shuffled at every
+  iteration (and shuffled back at the end).
+
 ``` python
 msa_tokens = tokenized_msa[:,:200]
-
-generated_tokens = IM_class.generate_all_msa(msa_tokens, iterations, use_pdf=False, T=1, save_all=True)
-generated_tokens = IM_class.print_tokens(generated_tokens)
+# If use_pdf=True, generate tokens by sampling from the logits at temperature T
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
+# If rand_perm=True, then the sequence order is shuffled at every iteration (and shuffled back at the end)
+generated_tokens = IM_class.generate_all_msa(msa_tokens, iterations, use_pdf=False, T=1, save_all=True, rand_perm=False)
+generated_tokens = IM_class.print_tokens(generated_tokens)
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
 ```
 
 ### Generate MSA with fixed context (mask all but context)
 
+- If `use_pdf`=True, generate tokens by sampling from the logits at
+  temperature `T`.
+- If `save_all`=True, then the first dimension of generated_tokens is
+  the number of iterations.
+- If `rand_perm`=True, then the sequence order is shuffled at every
+  iteration (and shuffled back at the end).
+- If `use_rnd_ctx`=False, then the context is `all_context` and it’s the
+  same at each iteration.
+
 ``` python
 ancestor = tokenized_msa[:,:10]
 all_context = tokenized_msa[:,10:210]
 
-generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context, use_rnd_ctx=False, save_all=True)
+generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
+                                                      use_rnd_ctx=False, save_all=True, rand_perm=False)
 generated_tokens = IM_class.print_tokens(generated_tokens)
-# If save_all=True, then the first dimension of generated_tokens is the number of iterations
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
 ```
 
 ### Generate MSA with variable context (mask all but context)
 
+- If `use_pdf`=True, generate tokens by sampling from the logits at
+  temperature `T`.
+- If `save_all`=True, then the first dimension of generated_tokens is
+  the number of iterations.
+- If `rand_perm`=True, then the sequence order is shuffled at every
+  iteration (and shuffled back at the end).
+- If `use_rnd_ctx`=True, then the context is a different sub-MSA sampled
+  at each iteration from the full MSA (the entire MSA is given as first
+  entry of `all_context`, the depth of the sub-MSA is given by the
+  second entry of `all_context`).
+
 ``` python
 ancestor = tokenized_msa[:,:10]
 all_context = (tokenized_msa[:,10:], 200)
 
-generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context, use_rnd_ctx=True, save_all=True)
+generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
+                                                      use_rnd_ctx=True, save_all=True, rand_perm=False)
 generated_tokens = IM_class.print_tokens(generated_tokens)
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
