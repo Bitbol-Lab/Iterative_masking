@@ -89,7 +89,7 @@ msa_tokens = tokenized_msa[:,:200]
 # If use_pdf=True, generate tokens by sampling from the logits at temperature T
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
 # If rand_perm=True, then the sequence order is shuffled at every iteration (and shuffled back at the end)
-generated_tokens = IM_class.generate_all_msa(msa_tokens, iterations, use_pdf=False, T=1, save_all=True, rand_perm=False)
+generated_tokens = IM_class.generate_all_msa(msa_tokens, iterations, use_pdf=False, T=1, save_all=True, rand_perm=True)
 generated_tokens = IM_class.print_tokens(generated_tokens)
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
 ```
@@ -110,7 +110,7 @@ ancestor = tokenized_msa[:,:10]
 all_context = tokenized_msa[:,10:210]
 
 generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
-                                                      use_rnd_ctx=False, save_all=True, rand_perm=False)
+                                                      use_rnd_ctx=False, save_all=True, rand_perm=True)
 generated_tokens = IM_class.print_tokens(generated_tokens)
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
 ```
@@ -133,7 +133,30 @@ ancestor = tokenized_msa[:,:10]
 all_context = (tokenized_msa[:,10:], 200)
 
 generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
-                                                      use_rnd_ctx=True, save_all=True, rand_perm=False)
+                                                      use_rnd_ctx=True, use_two_msas=False, mode="same", save_all=True, rand_perm=True)
+generated_tokens = IM_class.print_tokens(generated_tokens)
+# If save_all=True, then the first dimension of generated_tokens is the number of iterations
+print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
+```
+
+If you want to sample sequences from two different MSAs separately you
+can use the following parameters: - `use_rnd_ctx`=True, same as before -
+`use_two_msas`=True, if you want to sample from two different MSAs given
+as a tuple in the first entry of `all_context` (the second entry of
+`all_context` is the depth of each sub-MSA). - `mode`, is the sampling
+mode, if `mode`=“same” then the same number of sequences is sampled from
+each MSA, if `mode`=“ratio” then it samples a number of sequences from
+each MSA proportional to the current iteration, starts with all
+sequences from the first MSA and no sequences from the second MSA, ends
+with no sequences from the first MSA and all sequences from the second
+MSA.
+
+``` python
+ancestor = tokenized_msa[:,:10]
+all_context = ((tokenized_msa[:,10:1000], tokenized_msa[:,1000:]), 200)
+
+generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
+                                                      use_rnd_ctx=True, use_two_msas=True, mode="same", save_all=True, rand_perm=True)
 generated_tokens = IM_class.print_tokens(generated_tokens)
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)

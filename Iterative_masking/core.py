@@ -384,22 +384,49 @@ class IM_MSA_Transformer:
             return torch.stack(lst_msa_tokens, dim=0)
         return msa_tokens
 
-    def generate_with_context_msa(self, ancestor, iters, use_pdf=False, T=1, all_context=(None,100), use_rnd_ctx=False, save_all=False, rand_perm=False):
+    def generate_with_context_msa(self, ancestor, iters, use_pdf=False, T=1, all_context=(None,100),
+                                  use_rnd_ctx=False, use_two_msas=False, mode="same", save_all=False, rand_perm=False):
         """
         Iterate the MSA generation process `iters` times starting from `ancestor` and using the context from `all_context`, it uses
-        the function `generate_MSA_context`. If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves only the last one.
-        If `use_rnd_ctx` is True it uses a random context of size `num` from the full context MSA `full_context_msa`, otherwise it uses the full context MSA.
+        the function `generate_MSA_context`. If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves
+        only the last one.
+        If `use_rnd_ctx` is True it uses a random context of size `num` from the full context MSA `full_context_msa`,
+        otherwise it uses the full context MSA.
+        Context creation methods:
+        |__ Fixed: it uses the entire msa given in `all_context`.
+        |__ Variable: it uses a random subset of the msa given in `all_context` of size `num`.
+                |__ Single MSA: one MSA is given in `all_context`, it samples `num` sequences from it.
+                |__ Two MSAs: two MSAs are given in `all_context`, it samples sequences from each of them using the method defined by `mode`.
+                    |__ "same": it samples the same number of sequences (`num`/2) from each MSA.
+                    |__ "ratio": it samples a number of sequences from each MSA proportional to the current iteration, starts with all sequences
+                                 from the first MSA and no sequences from the second MSA, ends with no sequences from the first MSA and all
+                                 sequences from the second MSA.
         """
+        def mixer_func(inds1, inds2, num, i):
+            if mode=="same":
+                return inds1[:int(num/2)], inds2[:int(num/2)]
+            elif mode=="ratio":
+                ratio = i/(iters-1)
+                num2, num1 = round(num*ratio), num-round(num*ratio)
+                return inds1[:num1], inds2[:num2]
         if use_rnd_ctx:
             full_context_msa, num = all_context
+            if use_two_msas:
+                full_context_msa1, full_context_msa2 = full_context_msa
         else:
             context = all_context
             
         lst_ancestors = [DC(ancestor)]
         for i in tqdm(range(iters)):
             if use_rnd_ctx:
-                inds = torch.randperm(full_context_msa.shape[1])[:num]
-                context = full_context_msa[:, inds, :]
+                if use_two_msas:
+                    inds1 = torch.randperm(full_context_msa1.shape[1])
+                    inds2 = torch.randperm(full_context_msa2.shape[1])
+                    new_inds1, new_inds2 = mixer_func(inds1, inds2, num, i)
+                    context = torch.concat((full_context_msa1[:, new_inds1, :], full_context_msa2[:, new_inds2, :]),dim=1)
+                else:
+                    inds = torch.randperm(full_context_msa.shape[1])[:num]
+                    context = full_context_msa[:, inds, :]
             ancestor = self.generate_MSA_context(
                             ancestor=ancestor,
                             context=context,
