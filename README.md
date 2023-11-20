@@ -149,14 +149,17 @@ each MSA, if `mode`=“ratio” then it samples a number of sequences from
 each MSA proportional to the current iteration, starts with all
 sequences from the first MSA and no sequences from the second MSA, ends
 with no sequences from the first MSA and all sequences from the second
-MSA.
+MSA. - `warm_up`, used only if `mode`=“ratio”, is the number of
+iterations before starting to sample from the second MSA and also the
+number of iterations (before the end) when the sampling from the first
+MSA is stopped.
 
 ``` python
 ancestor = tokenized_msa[:,:10]
 all_context = ((tokenized_msa[:,10:1000], tokenized_msa[:,1000:]), 200)
 
 generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_pdf=False, T=1, all_context=all_context,
-                                                      use_rnd_ctx=True, use_two_msas=True, mode="same", save_all=True, rand_perm=True)
+                                                      use_rnd_ctx=True, use_two_msas=True, mode="same", warm_up=0, save_all=True, rand_perm=True)
 generated_tokens = IM_class.print_tokens(generated_tokens)
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)

@@ -385,7 +385,7 @@ class IM_MSA_Transformer:
         return msa_tokens
 
     def generate_with_context_msa(self, ancestor, iters, use_pdf=False, T=1, all_context=(None,100),
-                                  use_rnd_ctx=False, use_two_msas=False, mode="same", save_all=False, rand_perm=False):
+                                  use_rnd_ctx=False, use_two_msas=False, mode="same", warm_up=0, save_all=False, rand_perm=False):
         """
         Iterate the MSA generation process `iters` times starting from `ancestor` and using the context from `all_context`, it uses
         the function `generate_MSA_context`. If `save_all` is True it saves all the generated sequences at each iter, otherwise it saves
@@ -400,14 +400,17 @@ class IM_MSA_Transformer:
                     |__ "same": it samples the same number of sequences (`num`/2) from each MSA.
                     |__ "ratio": it samples a number of sequences from each MSA proportional to the current iteration, starts with all sequences
                                  from the first MSA and no sequences from the second MSA, ends with no sequences from the first MSA and all
-                                 sequences from the second MSA.
+                                 sequences from the second MSA. `warm_up` is the number of iterations before starting to sample from the second MSA
+                                 and also the number of iterations before the end after which the sampling from the first MSA is stopped.
         """
         def mixer_func(inds1, inds2, num, i):
             if mode=="same":
                 return inds1[:int(num/2)], inds2[:int(num/2)]
             elif mode=="ratio":
-                ratio = i/(iters-1)
-                num2, num1 = round(num*ratio), num-round(num*ratio)
+                ratio = (i-warm_up)/(iters-2*warm_up-1)
+                ratio = max(min(ratio, 1), 0)
+                val = round(num*ratio)
+                num2, num1 = val, num-val
                 return inds1[:num1], inds2[:num2]
         if use_rnd_ctx:
             full_context_msa, num = all_context
