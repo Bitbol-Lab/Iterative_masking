@@ -417,9 +417,12 @@ class IM_MSA_Transformer:
             context = all_context
             
         lst_ancestors = [DC(ancestor)]
-        for i in tqdm(range(iters)):
+        header = ""
+        for i in tqdm(range(iters), desc=header):
             if use_rnd_ctx:
                 if use_two_msas:
+                    ratio = round(i/(iters-1),3)
+                    header = f"Ratio beween MSAs: {ratio}"
                     inds1 = torch.randperm(full_context_msa1.shape[1])
                     inds2 = torch.randperm(full_context_msa2.shape[1])
                     new_inds1, new_inds2 = mixer_func(inds1, inds2, num, i)
