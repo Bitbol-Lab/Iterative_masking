@@ -45,7 +45,8 @@ class IM_MSA_Transformer:
                  filename=None,
                  num=None,
                  filepath=None,
-                 DEVICE=DEVICE):
+                 DEVICE=DEVICE,
+                 pretrained_model_path=None):
 
         self.iterations = iterations    # number of iterations used to generate the MSA
         self.p_mask = p_mask            # masking probability for the MSA generation
@@ -60,6 +61,8 @@ class IM_MSA_Transformer:
             raise ValueError("`filepath`, `filename` and `num` must be specified to import the MSA")
         # Import Transformer model
         self.msa_transformer, self.msa_alphabet = esm.pretrained.esm_msa1b_t12_100M_UR50S()
+        if pretrained_model_path is not None:
+            self.msa_transformer.load_state_dict(torch.load(pretrained_model_path))
         self.msa_transformer = self.msa_transformer.eval().to(DEVICE)
         self.msa_batch_converter = self.msa_alphabet.get_batch_converter()
         self.idx_list = self.msa_alphabet.tok_to_idx
