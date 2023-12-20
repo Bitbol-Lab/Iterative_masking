@@ -430,11 +430,11 @@ class IM_MSA_Transformer:
         for i in pbar:
             if use_rnd_ctx:
                 if use_two_msas:
-                    ratio = round(i/(iters-1),3)
-                    pbar.set_description(f"Ratio beween MSAs: {ratio}")
                     inds1 = torch.randperm(full_context_msa1.shape[1])
                     inds2 = torch.randperm(full_context_msa2.shape[1])
                     new_inds1, new_inds2 = mixer_func(inds1, inds2, num, i)
+                    ratio = round(len(new_inds1)/(len(new_inds2)+len(new_inds1)),3)
+                    pbar.set_description(f"Ratio beween MSAs: {ratio}")
                     context = torch.concat((full_context_msa1[:, new_inds1, :], full_context_msa2[:, new_inds2, :]),dim=1)
                 else:
                     inds = torch.randperm(full_context_msa.shape[1])[:num]
