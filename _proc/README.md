@@ -42,26 +42,7 @@ new MSAs with the iterative masking procedure
 `gen_MSAs`: example function (with parser) that can be used to generate
 and save new sequences directly from the terminal.
 
-## Example on how to use `gen_MSAs` to replicate the results of the paper
-
-``` python
-gen_MSAs(filepath="examples",
-         filename=["PF00072.fasta"],
-         new_dir="results",
-         pdf=False,
-         T=1,
-         sample_all=False,
-         Iters=200,
-         pmask=0.1,
-         num=[600],
-         depth=1,
-         generate=False,
-         print_all=False,
-         range_vals=False,
-         phylo_w=False)
-```
-
-## Some examples to generate new MSAs in a fast way
+## Some examples to generate new MSAs from your jupyter notebook
 
 ``` python
 filename = "PF00072.fasta"
@@ -71,8 +52,13 @@ iterations = 20
 
 print('Tokenize')
 IM_class = IM_MSA_Transformer(p_mask=pmask, filename=[filename], num=[-1], filepath=filepath)
-idx_list = IM_class.idx_list
 tokenized_msa = IM_class.msa_batch_tokens
+# Dictionary that maps amino acids to their token
+idx_list = IM_class.idx_list
+# Dictionary that maps tokens to their amino acid
+aa_list = {v: k for k,v in idx_list.items()}
+# Transform the tokenized MSA back into a string of amino acids
+strings_msa = IM_class.untokenize_msa(tokenized_msa[:,:100,:])
 ```
 
 ### Generate full MSA (mask all sequences and iterate)
@@ -163,4 +149,23 @@ generated_tokens = IM_class.generate_with_context_msa(ancestor, iterations, use_
 generated_tokens = IM_class.print_tokens(generated_tokens)
 # If save_all=True, then the first dimension of generated_tokens is the number of iterations
 print("Shape of the tokenized generated sequences: ", generated_tokens.shape)
+```
+
+## Example on how to use `gen_MSAs` to replicate the results of the paper
+
+``` python
+gen_MSAs(filepath="examples",
+         filename=["PF00072.fasta"],
+         new_dir="results",
+         pdf=False,
+         T=1,
+         sample_all=False,
+         Iters=200,
+         pmask=0.1,
+         num=[600],
+         depth=1,
+         generate=False,
+         print_all=False,
+         range_vals=False,
+         phylo_w=False)
 ```

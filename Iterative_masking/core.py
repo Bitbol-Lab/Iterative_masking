@@ -129,7 +129,23 @@ class IM_MSA_Transformer:
             print('MSA converted into tokens tensor of size and type:')
             print(msa_batch_tokens.size(), msa_batch_tokens.dtype)
             return msa_batch_labels, msa_batch_strs, msa_data, msa_batch_tokens
-        
+
+    #-------------------------------------------------------------------------------------------------------------------    
+    def untokenize_msa(self, tokens):
+        """
+        Outputs the MSA in the form of a list of strings, converting the tokens into aminoacids.
+        """
+        aa_list = {v: k for k,v in self.idx_list.items()}
+        # If tokens is an array then it's the output MSA
+        with torch.no_grad():
+            complete_msa = []
+            for batch in tokens:
+                aa_msa = []
+                for seq in batch:
+                    aa_msa.append("".join([aa_list[int(tk)] for tk in seq]))
+                complete_msa.append(aa_msa)
+            return complete_msa
+    
     #-------------------------------------------------------------------------------------------------------------------
     def print_tokens(self, tokens=None):
         """

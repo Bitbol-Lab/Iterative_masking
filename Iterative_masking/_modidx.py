@@ -42,4 +42,6 @@ d = { 'settings': { 'branch': 'main',
                                                                                                       'Iterative_masking/core.py'),
                                         'Iterative_masking.core.IM_MSA_Transformer.tokenize_msa': ( 'core.html#im_msa_transformer.tokenize_msa',
                                                                                                     'Iterative_masking/core.py'),
+                                        'Iterative_masking.core.IM_MSA_Transformer.untokenize_msa': ( 'core.html#im_msa_transformer.untokenize_msa',
+                                                                                                      'Iterative_masking/core.py'),
                                         'Iterative_masking.core.gen_MSAs': ('core.html#gen_msas', 'Iterative_masking/core.py')}}}
