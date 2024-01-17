@@ -61,6 +61,23 @@ aa_list = {v: k for k,v in idx_list.items()}
 strings_msa = IM_class.untokenize_msa(tokenized_msa[:,:100,:])
 ```
 
+### It’s possible to decide which tokens to mask by modifying the parameter `p_mask`
+
+``` python
+import torch
+
+# Mask all the tokens from 10 to 30 at each iteration (probability of 1) and keep the rest of the tokens unmasked
+p_mask = torch.zeros(tokenized_msa.shape[-1])
+p_mask[10:30] = 1.
+IM_class.p_mask = p_mask
+# Mask the tokens from 10 to 30 with a probability of 0.1 and keep the rest of the tokens unmasked
+p_mask = torch.zeros(tokenized_msa.shape[-1])
+p_mask[10:30] = 0.1
+IM_class.p_mask = p_mask
+# Mask all the tokens uniformly at random with a probability of 0.1
+IM_class.p_mask = 0.1
+```
+
 ### Generate full MSA (mask all sequences and iterate)
 
 - If `use_pdf`=True, generate tokens by sampling from the logits at
